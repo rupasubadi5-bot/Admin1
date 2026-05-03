@@ -141,8 +141,8 @@
     });
 
 
-    window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
-    window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
+    
+       window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
     const msgInput = document.getElementById(`msg-${docId}`);
     
     // १. रेडीमेड म्यासेज सेटिङ
@@ -157,13 +157,26 @@
     const finalMsg = (msgInput && msgInput.value.trim() !== "") ? msgInput.value.trim() : msg;
 
     try {
+        // २. Firebase मा डाटा अपडेट गर्ने
         await updateDoc(doc(db, "users", docId), {
             requestStatus: status,
             adminMessage: finalMsg,
-            // यो 'processedAt' ले नै युजरकोमा पपअप खोल्छ
-            processedAt: new Date().getTime() 
+            processedAt: new Date().getTime(),
+            
+            // ३. युजरको 'Admin Message History' मा यो म्यासेज थप्ने (नयाँ फिचर)
+            adminMsgHistory: arrayUnion({
+                text: finalMsg,
+                status: status,
+                time: new Date().toLocaleString()
+            })
         });
 
+        // ४. एडमिनको आफ्नै लग (Local History) को लागि मात्र यो राख्ने
+        let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
+        logs.unshift({ docId, userName, item, whatsapp, status, msg: finalMsg, time: new Date().toLocaleString() });
+        localStorage.setItem('srt_logs', JSON.stringify(logs));
+        
+        if(typeof loadHistory === 'function') loadHistory();
         alert("🚀 SIGNAL SENT: " + status);
         
     } catch(e) { 
@@ -172,16 +185,6 @@
     }
 };
 
-
-
-            let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
-            logs.unshift({ docId, userName, item, whatsapp, status, msg, time: new Date().toLocaleString() });
-            localStorage.setItem('srt_logs', JSON.stringify(logs));
-            
-            loadHistory();
-            if(!customMsg) alert("SIGNAL SENT: " + status);
-        } catch(e) { alert("ERROR: " + e.message); }
-    };
 
     window.toggleMenu = () => {
         document.getElementById('sidebar').classList.toggle('active');
