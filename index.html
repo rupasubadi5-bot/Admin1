@@ -140,10 +140,8 @@
         if (count === 0) list.innerHTML = "<p style='text-align:center; color:#444; margin-top:50px;'>NO ACTIVE REQUESTS</p>";
     });
 
-import { doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
-    
-    
-       window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
+
+    window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
     const msgInput = document.getElementById(`msg-${docId}`);
     
     // १. रेडीमेड म्यासेज सेटिङ
@@ -173,8 +171,7 @@ import { doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/1
     }
 };
 
-
-let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
+            let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
             logs.unshift({ docId, userName, item, whatsapp, status, msg, time: new Date().toLocaleString() });
             localStorage.setItem('srt_logs', JSON.stringify(logs));
             
@@ -182,7 +179,6 @@ let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
             if(!customMsg) alert("SIGNAL SENT: " + status);
         } catch(e) { alert("ERROR: " + e.message); }
     };
-
 
     window.toggleMenu = () => {
         document.getElementById('sidebar').classList.toggle('active');
