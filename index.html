@@ -108,12 +108,25 @@
             const u = uDoc.data();
             if (u.requestStatus === "Approval Pending") {
                 count++;
+
+                // १. समयलाई नेपाल फर्म्याटमा ढाल्ने (यही लाइनले ७:१५ को समस्या हटाउँछ)
+                let displayTime = "No Time";
+                if (u.lastRequestTime) {
+                    displayTime = new Date(u.lastRequestTime).toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kathmandu',
+                        hour12: true,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+
                 list.innerHTML += `
                     <div class="admin-card">
                         <div style="color: #aaa; font-size: 14px;"><b>NAME:</b> <span style="color: #fff;">${u.userName || 'N/A'}</span></div>
                         <div style="color: #ff00f0; font-size: 14px;"><b>ITEM:</b> ${u.item || 'N/A'}</div>
                         <div style="color: #25d366; font-size: 14px;"><b>WHATSAPP:</b> ${u.whatsapp || 'N/A'}</div>
-                        <div style="color: #00f0ff; font-size: 14px; margin-top: 5px;"><b>TIME:</b> ${u.time || 'No Time'}</div>
+                        <div style="color: #00f0ff; font-size: 14px; margin-top: 5px;"><b>TIME:</b> ${displayTime}</div>
 
                         <input type="text" id="msg-${uDoc.id}" class="login-input" placeholder="Message to user..." style="margin: 10px 0; font-size: 12px;">
                         
@@ -126,6 +139,7 @@
         });
         if (count === 0) list.innerHTML = "<p style='text-align:center; color:#444; margin-top:50px;'>NO ACTIVE REQUESTS</p>";
     });
+
 
     window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
         const msgInput = document.getElementById(`msg-${docId}`);
