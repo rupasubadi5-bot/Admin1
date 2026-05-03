@@ -142,34 +142,15 @@
 
 
     window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
-    const msgInput = document.getElementById(`msg-${docId}`);
-    
-    // १. रेडीमेड म्यासेज सेटिङ
-    let msg = "";
-    if (status === 'Approved') {
-        msg = "✅ Approved! Please wait 5 minutes for key generating.";
-    } else {
-        msg = "❌ Rejected! Payment or Transaction not successful.";
-    }
-
-    // यदि एडमिनले आफै केही लेखेको छ भने त्यो पठाउने
-    const finalMsg = (msgInput && msgInput.value.trim() !== "") ? msgInput.value.trim() : msg;
-
-    try {
-        await updateDoc(doc(db, "users", docId), {
-            requestStatus: status,
-            adminMessage: finalMsg,
-            // यो 'processedAt' ले नै युजरकोमा पपअप खोल्छ
-            processedAt: new Date().getTime() 
-        });
-
-        alert("🚀 SIGNAL SENT: " + status);
+        const msgInput = document.getElementById(`msg-${docId}`);
+        const msg = customMsg || (msgInput ? msgInput.value : "") || "Status Updated";
         
-    } catch(e) { 
-        console.error(e);
-        alert("ERROR: " + e.message); 
-    }
-};
+        try {
+            await updateDoc(doc(db, "users", docId), {
+                requestStatus: status,
+                adminMessage: msg,
+                processedAt: new Date().toLocaleString()
+            });
 
             let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
             logs.unshift({ docId, userName, item, whatsapp, status, msg, time: new Date().toLocaleString() });
