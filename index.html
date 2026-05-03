@@ -142,9 +142,10 @@
 
 
     window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
-    const userRef = doc(db, "users", docId);
+    window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
+    const msgInput = document.getElementById(`msg-${docId}`);
     
-    // १. म्यासेज के पठाउने भनेर निर्णय गर्ने
+    // १. रेडीमेड म्यासेज सेटिङ
     let msg = "";
     if (status === 'Approved') {
         msg = "✅ Approved! Please wait 5 minutes for key generating.";
@@ -152,26 +153,25 @@
         msg = "❌ Rejected! Payment or Transaction not successful.";
     }
 
-    // २. Firebase मा डेटा अपडेट र हिस्ट्रीमा थप गर्ने
+    // यदि एडमिनले आफै केही लेखेको छ भने त्यो पठाउने
+    const finalMsg = (msgInput && msgInput.value.trim() !== "") ? msgInput.value.trim() : msg;
+
     try {
-        await updateDoc(userRef, {
-            requestStatus: status, // यो युजरको होममा देखिन्छ
-            adminMessage: msg,     // यो रिसेन्ट म्यासेज हो
-            processedAt: new Date().getTime(),
-            
-            // यो चाहिँ तपाईँले खोज्नुभएको नयाँ 'Admin Message History' मा थपिन्छ
-            adminMsgHistory: arrayUnion({
-                text: msg, 
-                status: status, // 'Approved' वा 'Rejected'
-                time: new Date().toLocaleString()
-            })
+        await updateDoc(doc(db, "users", docId), {
+            requestStatus: status,
+            adminMessage: finalMsg,
+            // यो 'processedAt' ले नै युजरकोमा पपअप खोल्छ
+            processedAt: new Date().getTime() 
         });
-        alert("Action successful!");
-    } catch (error) {
-        console.error("Error updating document: ", error);
-        alert("Failed to update.");
+
+        alert("🚀 SIGNAL SENT: " + status);
+        
+    } catch(e) { 
+        console.error(e);
+        alert("ERROR: " + e.message); 
     }
 };
+
 
 
             let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
