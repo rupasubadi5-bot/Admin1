@@ -140,7 +140,8 @@
         if (count === 0) list.innerHTML = "<p style='text-align:center; color:#444; margin-top:50px;'>NO ACTIVE REQUESTS</p>";
     });
 
-
+import { doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
+    
     
        window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
     const msgInput = document.getElementById(`msg-${docId}`);
