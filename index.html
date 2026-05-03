@@ -150,20 +150,123 @@
                 requestStatus: status,
                 adminMessage: msg,
                 processedAt: new Date().toLocaleString()
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, getCountFromServer, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAjJpK-3eNIXFM7V7dWLJhWua5T3fF3_2E",
+        authDomain: "user-store-srt.firebaseapp.com",
+        projectId: "user-store-srt",
+        storageBucket: "user-store-srt.firebasestorage.app",
+        messagingSenderId: "932714544224",
+        appId: "1:932714544224:web:7ecaecb707b59b3b7d1705"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // --- LOGIN SYSTEM ---
+    window.checkLogin = () => {
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        const v = document.getElementById('vcode').value;
+
+        if(u === "SAMRAT" && p === "999999" && v === "000000") {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-dash').style.display = 'flex';
+            startRealTimeUpdates(); // Login पछि Listener सुरु गर्ने
+            fetchTotalAccounts();
+        } else { 
+            alert("ACCESS DENIED: INVALID CREDENTIALS"); 
+        }
+    }
+
+    async function fetchTotalAccounts() {
+        try {
+            const snapshot = await getCountFromServer(collection(db, "users"));
+            document.getElementById('acc-count').innerText = "TOTAL USERS: " + snapshot.data().count;
+        } catch(e) { console.error("Count Error:", e); }
+    }
+
+    // --- REAL-TIME LISTENER (The Core Fix) ---
+    function startRealTimeUpdates() {
+        console.log("System: Listening for live updates...");
+        
+        // विशेष गरी 'Approval Pending' भएकालाई मात्र सुन्ने गरी Query बनाइएको छ
+        const q = query(collection(db, "users"), where("requestStatus", "==", "Approval Pending"));
+
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById("live-data");
+            list.innerHTML = "";
+            
+            if (snapshot.empty) {
+                list.innerHTML = "<p style='text-align:center; color:#444; margin-top:50px;'>NO ACTIVE REQUESTS</p>";
+                return;
+            }
+
+            snapshot.forEach((uDoc) => {
+                const u = uDoc.data();
+                const docId = uDoc.id;
+
+                // Time formatting for Nepal
+                let displayTime = "Just Now";
+                if (u.lastRequestTime) {
+                    displayTime = new Date(u.lastRequestTime).toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kathmandu',
+                        hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+                }
+
+                const card = document.createElement('div');
+                card.className = 'admin-card';
+                card.innerHTML = `
+                    <div style="color: #aaa; font-size: 14px;"><b>NAME:</b> <span style="color: #fff;">${u.userName || 'N/A'}</span></div>
+                    <div style="color: var(--neon-pink); font-size: 14px;"><b>ITEM:</b> ${u.item || 'N/A'}</div>
+                    <div style="color: var(--neon-green); font-size: 14px;"><b>WHATSAPP:</b> ${u.whatsapp || 'N/A'}</div>
+                    <div style="color: var(--neon-blue); font-size: 14px; margin-top: 5px;"><b>TIME:</b> ${displayTime}</div>
+
+                    <input type="text" id="msg-${docId}" class="login-input" placeholder="Message to user..." style="margin: 10px 0; font-size: 12px;">
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-approve" onclick="manage('${docId}', 'Approved', '${u.userName}', '${u.item}', '${u.whatsapp}')">APPROVE</button>
+                        <button class="btn-reject" onclick="manage('${docId}', 'Rejected', '${u.userName}', '${u.item}', '${u.whatsapp}')">REJECT</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }, (error) => {
+            console.error("Snapshot Listener Error:", error);
+            alert("Connection lost. Please check internet.");
+        });
+    }
+
+    // --- ACTION HANDLER ---
+    window.manage = async (docId, status, userName, item, whatsapp, customMsg = null) => {
+        const msgInput = document.getElementById(`msg-${docId}`);
+        const msg = customMsg || (msgInput ? msgInput.value : "") || "Status Updated";
+        
+        try {
+            await updateDoc(doc(db, "users", docId), {
+                requestStatus: status,
+                adminMessage: msg,
+                processedAt: new Date().toISOString()
             });
 
+            // Local History Update
             let logs = JSON.parse(localStorage.getItem('srt_logs') || '[]');
             logs.unshift({ docId, userName, item, whatsapp, status, msg, time: new Date().toLocaleString() });
-            localStorage.setItem('srt_logs', JSON.stringify(logs));
+            localStorage.setItem('srt_logs', JSON.stringify(logs.slice(0, 50))); // Keep last 50 only
             
-            loadHistory();
             if(!customMsg) alert("SIGNAL SENT: " + status);
-        } catch(e) { alert("ERROR: " + e.message); }
+        } catch(e) { 
+            alert("ACTION ERROR: " + e.message); 
+        }
     };
 
     window.toggleMenu = () => {
         document.getElementById('sidebar').classList.toggle('active');
-        loadHistory();
+        if(document.getElementById('sidebar').classList.contains('active')) loadHistory();
     };
 
     window.loadHistory = () => {
@@ -180,36 +283,25 @@
                         <span style="color:${statusColor}; font-size:10px;">${log.status}</span>
                     </div>
                     <div style="font-size:11px; color:#888;">Item: ${log.item}</div>
-                    <div style="font-size:11px; color:var(--neon-green);">WhatsApp: ${log.whatsapp || 'N/A'}</div>
-                    <div style="font-size:11px; color:#555; margin-bottom:5px;">Time: ${log.time}</div>
-                    <input type="text" id="msg-hist-${index}" class="login-input" style="padding:5px; font-size:11px;" value="${log.msg}">
-                    <button class="btn btn-resend" onclick="reSend('${log.docId}', ${index}, '${log.userName}', '${log.item}', '${log.whatsapp}')">EDIT & RE-SEND SIGNAL</button>
+                    <div style="font-size:11px; color:#555;">Time: ${log.time}</div>
                 </div>
             `;
         });
     };
 
-    window.reSend = async (docId, index, name, item, whatsapp) => {
-        const newMsg = document.getElementById(`msg-hist-${index}`).value;
-        const newStatus = confirm("Change status to APPROVED?\n(Cancel for keeping same)") ? "Approved" : "Rejected";
-        await window.manage(docId, newStatus, name, item, whatsapp, newMsg);
-        alert("HISTORY UPDATED & RE-SENT!");
-    };
-
     window.confirmClear = () => {
-        if(confirm("⚠ WARNING: CAN YOU REALLY CLEAN HISTORY?")) {
+        if(confirm("⚠ CLEAR LOG HISTORY?")) {
             localStorage.removeItem('srt_logs');
             loadHistory();
         }
     };
 
-    // Mobile Check Logic
-    (function ultimateBlock() {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (!isMobile) {
-            document.body.innerHTML = `<div style="height:100vh; background:black; color:red; display:flex; justify-content:center; align-items:center; text-align:center; font-family:sans-serif;"><h1>🚨 ACCESS DENIED: MOBILE ONLY 🚨</h1></div>`;
-        }
-    })();
+    // Mobile Guard
+    if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        document.body.innerHTML = `<div style="height:100vh; background:black; color:red; display:flex; justify-content:center; align-items:center; text-align:center; font-family:sans-serif;"><h1>🚨 ACCESS DENIED: MOBILE ONLY 🚨</h1></div>`;
+    }
+
+
 </script>
 </body>
 </html>
